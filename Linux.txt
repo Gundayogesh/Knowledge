@@ -1,0 +1,25 @@
+# Knowledge
+Linux Commands: 
+
+pipreqs foldername/ -generate requirements.txt
+
+https://medium.com/naukri-engineering/way-to-store-large-deep-learning-models-in-production-ready-environments-d8a4c66cc04c
+
+lgb_estimator.booster_.save_model(filepath+'ligbm-model.txt')
+x = lightgbm.Booster(model_file=filepath+'ligbm-model.txt')
+ pred=(x.predict(X_test) > 0.5).astype("int32")
+ 
+ _________________________________________________________________________________
+nohup python app.py & > nohup.out
+ps -ef|grep *.py
+ps -fA | grep python
+netstat - plt
+
+
+1.Login into VM -Putty
+2. use WinScp for file transfer
+3. create a folder using mkdir
+4. download miniconda.sh file and send it to VM using WinScp and run bash filename.sh
+5. create  venv : python3 -m venv ITRS_env
+6. source miniconda3/ITRS_env/bin/activate
+
