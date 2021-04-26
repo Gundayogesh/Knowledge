@@ -1,0 +1,93 @@
+# Common imports
+import onnx
+import numpy as np
+import onnxruntime as rt
+
+# Sklearn, XGBoost, LightGBM 2 ONNX Conversion
+import xgboost
+import onnxmltools
+from skl2onnx import convert_sklearn
+from onnxmltools.convert import convert_keras
+from onnxmltools.convert import convert_sparkml
+from onnxmltools.convert import convert_xgboost
+from onnxmltools.convert import convert_lightgbm
+from skl2onnx.common.data_types import FloatTensorType
+from onnxconverter_common.data_types import FloatTensorType
+from onnxconverter_common.data_types import FloatTensorType
+
+
+class ml_convert:
+    model_type = ''
+
+    def ml_to_onnx(self, model, no_features, type):
+        self.model_type = type
+        initial_type = [('float_input', FloatTensorType([None, no_features]))]
+
+        if type == 'sklearn':
+            onx = convert_sklearn(model, initial_types=initial_type)
+        elif type == 'xgboost':
+            onx = convert_xgboost(model, initial_types=initial_type)
+        elif type == 'lightgbm':
+            onx = convert_lightgbm(model, initial_types=initial_type)
+        elif type == 'sparkml':
+            onx = convert_sparkml(model, initial_types=initial_type)
+        elif type == 'keras':
+            onx = convert_keras(model, initial_types=initial_type, name='keras')
+        else:
+            return 'invalid model passed'
+
+        with open(str(type)+"_onnx.onnx", "wb") as f:
+                f.write(onx.SerializeToString())
+
+    def predict_onnx(self, X_test):
+        sess = rt.InferenceSession(str(self.model_type)+"_onnx.onnx")
+        input_name = sess.get_inputs()[0].name
+        label_name = sess.get_outputs()[0].name
+        predictions = sess.run([label_name], {input_name: X_test.astype(np.float32)})[0]
+        return predictions
+
+
+# ======================================================================================================================
+
+import torch
+import subprocess
+import torch.nn as nn
+import onnxruntime as rt
+import torch.nn.functional as F
+from torch.autograd import Variable
+from onnx_tf.backend import prepare
+from onnx2pytorch import ConvertModel
+
+class dl_convert:
+    def pytorch_to_onnx(self, model, dummy_input):
+        torch.onnx.export(model, dummy_input, "pt2onnx.onnx")
+
+    def onnx_to_tensorflow(self):
+        onnx_model = onnx.load("pt2onnx.onnx")
+        tf_rep = prepare(onnx_model)
+        # tf_rep.export_graph('pt2tf.pb')
+        return tf_rep
+
+    def pytorch_to_tensorflow(self, network, dummy_input):
+        self.pytorch_to_onnx(network, dummy_input)
+        self.onnx_to_tensorflow()
+
+    def tensorflow_to_onnx(self, inp_path):
+        _ = subprocess.run("python -m tf2onnx.convert --saved-model " + str(inp_path) + " --opset 10 --output tf2onnx_model.onnx")
+
+    def onnx_to_pytorch(self, model, out_path):
+        onnx_model = onnx.load(model)
+        pytorch_model = ConvertModel(onnx_model)
+        torch.save(pytorch_model, out_path + "\onnx2pt_model.pt")
+
+    def tensorflow_to_pytorch(self, inp_path, out_path):
+        self.tensorflow_to_onnx(inp_path)
+        self.onnx_to_pytorch(inp_path+'tf2onnx_model.onnx', out_path)
+
+    def predict_onnx(self, model, test):
+        # model = ('tf2onnx_model.onnx')
+        session = rt.InferenceSession(model)
+        input_name = session.get_inputs()[0].name
+        label_name = session.get_outputs()[0].name
+        onnx_preds = session.run([label_name], {input_name: test.astype(np.float32)})[0]
+        return onnx_preds
